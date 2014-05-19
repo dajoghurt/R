@@ -1,15 +1,19 @@
 library(plyr)
 
-flattenList <- function(list, expandLevels)
+flattenList <- function(list, expandLevels, arraysToIgnore)
 { 
   listElements <- sapply(list, is.list)
   parentList <- list[!listElements]
   subLists <- list[listElements]
-  
-  if (expandLevels<=0)
+    
+  for (subListName in names(subLists))
   {
-    for (subListName in names(subLists))
-    {          
+    if (subListName %in% arraysToIgnore){
+      next
+    }      
+    
+    if (expandLevels<=0)
+    {         
       temp <- list()
       temp[[subListName]] = length(subLists[[subListName]])
       parentList <- c(parentList, temp)
@@ -25,12 +29,24 @@ flattenList <- function(list, expandLevels)
   if (length(subLists)>0 && expandLevels>=1)
   {
     result <- data.frame()
-    for (sub in subLists)
+    for (subListName in names(subLists))
     {
-      flattened <- flattenList(sub, expandLevels-1)
-      if (length(parentList)>0)
-        flattened <- cbind(parentList, flattened)
-      result <- rbind.fill(result, flattened)
+      if ( subListName %in% arraysToIgnore ) {
+        next
+      }
+      
+      thisList <- subLists[[subListName]]
+      flattened <- flattenList(thisList, expandLevels-1, arraysToIgnore)
+      
+      if (length(parentList)>0){
+        if (length(flattened)>0)
+          flattened <- cbind(parentList, flattened)
+        else
+          flattened <- as.data.frame(parentList)        
+      }        
+      
+      if (length(flattened)>0)
+        result <- rbind.fill(result, flattened)
     }
     return (result)
   }
@@ -79,12 +95,13 @@ flattenBSON <- function(bson, levelsToFlatten)
   return (result)
 }
 
-cursorToFlatTable <- function(cursor, levelsToFlatten)
+
+cursorToFlatTable <- function(cursor, ...)
 {  
   res <- data.frame()
   while (mongo.cursor.next(cursor)) 
   {
-    val <- flattenList(mongo.bson.to.list(mongo.cursor.value(cursor)), levelsToFlatten)
+    val <- flattenList(mongo.bson.to.list(mongo.cursor.value(cursor)), ...)
     res <- rbind.fill(res, val)
   }
   
@@ -95,14 +112,16 @@ cursorToFlatTable <- function(cursor, levelsToFlatten)
 getPatientTable <- function(mongo, collection)
 {
 #   fields <- mongo.bson.from.JSON("{\"SliceSets\": 0, \"Studies\": 0}")
+
   cursor <- mongo.find(mongo, collection) 
-  return (cursorToFlatTable(cursor, 0))  
+  
+  return (cursorToFlatTable(cursor, expandLevels=0, arraysToIgnore = "uploadInfo"))  
 }
 
 
 getSliceSetTable <- function(mongo, collection)
 {
-  fields <- mongo.bson.from.JSON("{\"Studies\": 0}")
+  fields <- mongo.bson.from.JSON("{\"Studies\": 0, \"uploadInfo\": 0}")
   cursor <- mongo.find(mongo, collection, fields=fields) 
-  return (cursorToFlatTable(cursor, 2))  
+  return (cursorToFlatTable(cursor, expandLevels=2, arraysToIgnore = c("VoxelObjects", "Studies", "LabeledPoints", "uploadInfo")))  
 }
