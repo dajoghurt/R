@@ -1,22 +1,24 @@
 library(plyr)
 
-flattenList <- function(list, expandLevels, arraysToIgnore)
+flattenList <- function(list, expandLevels, arraysToIgnore = vector())
 { 
   listElements <- sapply(list, is.list)
   parentList <- list[!listElements]
   subLists <- list[listElements]
-    
+  
   for (subListName in names(subLists))
   {
     if (subListName %in% arraysToIgnore){
+      subLists[[subListName]] <- NULL
       next
     }      
     
     if (expandLevels<=0)
     {         
       temp <- list()
-      temp[[subListName]] = length(subLists[[subListName]])
+      temp[[subListName]] <- length(subLists[[subListName]])
       parentList <- c(parentList, temp)
+      subLists[[subListName]] <- NULL
     }
   }
     
@@ -26,15 +28,13 @@ flattenList <- function(list, expandLevels, arraysToIgnore)
     parentList <- parentList[sapply(parentList, class) != "mongo.oid"]
   }
   
+  compact(subLists)
+  
   if (length(subLists)>0 && expandLevels>=1)
   {
     result <- data.frame()
     for (subListName in names(subLists))
-    {
-      if ( subListName %in% arraysToIgnore ) {
-        next
-      }
-      
+    {      
       thisList <- subLists[[subListName]]
       flattened <- flattenList(thisList, expandLevels-1, arraysToIgnore)
       
@@ -111,9 +111,8 @@ cursorToFlatTable <- function(cursor, ...)
 
 getPatientTable <- function(mongo, collection)
 {
-#   fields <- mongo.bson.from.JSON("{\"SliceSets\": 0, \"Studies\": 0}")
-
-  cursor <- mongo.find(mongo, collection) 
+  fields <- mongo.bson.from.JSON("{\"uploadInfo\": 0}")
+  cursor <- mongo.find(mongo, collection, fields) 
   
   return (cursorToFlatTable(cursor, expandLevels=0, arraysToIgnore = "uploadInfo"))  
 }
@@ -121,7 +120,8 @@ getPatientTable <- function(mongo, collection)
 
 getSliceSetTable <- function(mongo, collection)
 {
-  fields <- mongo.bson.from.JSON("{\"Studies\": 0, \"uploadInfo\": 0}")
+  fields <- mongo.bson.from.JSON("{\"Studies\": 0, \"uploadInfo\": 0, \"VoxelObjects\": 0,
+                                   \"LabeledPoints\": 0}")
   cursor <- mongo.find(mongo, collection, fields=fields) 
-  return (cursorToFlatTable(cursor, expandLevels=2, arraysToIgnore = c("VoxelObjects", "Studies", "LabeledPoints", "uploadInfo")))  
+  return (cursorToFlatTable(cursor, expandLevels=2, arraysToIgnore = "uploadInfo"))  
 }
