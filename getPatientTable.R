@@ -125,3 +125,11 @@ getSliceSetTable <- function(mongo, collection)
   cursor <- mongo.find(mongo, collection, fields=fields) 
   return (cursorToFlatTable(cursor, expandLevels=2, arraysToIgnore = c("VoxelObjects", "Studies", "LabeledPoints", "uploadInfo")))  
 }
+
+makeBrainbookConnection <- function()
+{
+  retList <- list()
+  retList[["mongo"]] <- mongo.create(host = "10.10.0.115", db="Brainbook")
+  retList[["coll"]] <- "Brainbook.Patients"
+  retList
+}
