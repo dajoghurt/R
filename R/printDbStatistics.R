@@ -1,5 +1,3 @@
-source("getPatientTable.R")
-
 printPatientStatistics <- function(patientTable)
 {
   print(paste("Total number of patients:", nrow(patientTable) ))
@@ -18,12 +16,13 @@ printPatientStatistics <- function(patientTable)
   hist((doubleDate-patientTable$dcmPatientsBirthDate)/10000, main="age distribution", xlab="age", ylab="number of patients")
 }
 
+
 printSliceSetStatistics <- function(sliceSetTable)
 {
   print(paste("Total number of slice sets:", nrow(sliceSetTable) ))
   
   # modality distribution
-  barplot(table(sliceSetTable$dcmModality), main="Slice Set Modalitiy")
+  barplot(table(sliceSetTable$dcmModality), main="Slice Set Modality")
   
   # sequence distribution
   barplot(table(sliceSetTable$sequenceType[sliceSetTable$dcmModality=="MR"], useNA="ifany"), main="MR sequence distribution")
@@ -35,26 +34,18 @@ printSliceSetStatistics <- function(sliceSetTable)
   barplot(table(sliceSetTable$sliceSpaceType, useNA="ifany"), main="Slice Space Types")
 }
 
+
 printDbStatistics <- function()
 {
-  dbHost <- "localhost"
-  dbName <- "Brainbook"
-  collName <- "Patients"
-  
-  mongo <- mongo.create(host=dbHost, db=dbName)
-  
-  if (mongo.is.connected(mongo)==FALSE){
-    print ("Failed to connect to DB.")
-    return
-  }  
-  
-  patientTable <- getPatientTable(mongo, paste(dbName,collName, sep='.'))
+  connection = makeDbConnection(collType = "Patients")
+    
+  patientTable <- getPatientTable(connection$mongo, connection$coll)
   printPatientStatistics( patientTable )
   
-  sliceSetTable <- getSliceSetTable(mongo, paste(dbName,collName, sep='.'))
+  sliceSetTable <- getSliceSetTable(connection$mongo, connection$coll)
   printSliceSetStatistics( sliceSetTable )
   
-  mongo.destroy(mongo)
+  mongo.destroy(connection$mongo)
 }
 
 

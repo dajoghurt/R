@@ -1,0 +1,8 @@
+Package: MetaDbTools
+Title: MetaDbTools
+Version: 0.1
+Author: "Jens Schmaler"
+Description: Some R tools for working with Brainbook
+Depends: R (>= 3.1.0)
+License: What license is it under?
+LazyData: true
